@@ -4,7 +4,8 @@ set -eo pipefail
 echo "-> running render.sh with EVENT ${ACORN_EVENT}"
 
 if [ "$ACORN_EVENT" = "delete" ]; then
-  atlas cluster delete --force test
+  # Make sure to delete the cluster only once (in case the job is triggered multiple time)
+  (atlas cluster delete --force test || true)
   exit 0
 fi
 
