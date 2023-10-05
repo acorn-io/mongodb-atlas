@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eo pipefail
 
+echo "-> running render.sh with EVENT ${ACORN_EVENT}"
+
 if [ "$ACORN_EVENT" = "delete" ]; then
   atlas dbusers delete --force ${DB_USER}
   atlas cluster delete --force test
