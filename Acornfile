@@ -1,0 +1,99 @@
+name:        "MongoDB Atlas Acorn"
+description: "Acorn providing a MongoDB Atlas cluster"
+readme:      "./README.md"
+info:        localData.info
+icon:        "./icon.png"
+
+args: {
+  // Cloud provider
+  provider: "AWS"
+
+  // Cloud provider region
+  region: "EU_WEST_1"
+  
+  // Cluster size (only M0 is free)
+  tier: "M0"
+
+  // Default database
+  dbName: "mydb"
+}
+
+services: atlas: generated: job: "create-resources"
+
+jobs: "create-resources": {
+  build: context: "."
+  env: {
+    MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
+    MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
+    MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
+    DB_USER: "secret://username/token"
+    DB_PASS: "secret://password/token"
+    DB_NAME: args.dbName
+    PROVIDER: args.provider
+    REGION: args.region
+    TIER: args.tier
+  }
+  events: ["create", "delete"]
+}
+
+secrets: {
+  username: {
+    name: "username to be used for the mongodb user"
+    type: "token"
+    params: {
+        length: 16
+        characters: "abcdedfhifj01234567890"
+    }
+    data: token: ""
+  }
+}
+
+secrets: {
+  password: {
+    name: "password to be used for the mongodb user"
+    type: "token"
+    params: {
+        length: 16
+        characters: "abcdedfhifj01234567890"
+    }
+    data: token: ""
+  }
+}
+
+secrets: {
+  "user": {
+    type: "generated"
+    params: job: "create-resources"
+  }
+}
+
+secrets: {
+  "atlas-creds": {
+      external: "atlas-creds"
+      type: "opaque"
+      data: {
+          public_key: "MONGODB_ATLAS_PUBLIC_API_KEY"
+          private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
+          project_id: "MONGODB_ATLAS_PROJECT_ID"
+      }
+  }
+}
+
+localData: info: """
+	## Usage
+
+	services: db: {
+		image: "ghcr.io/lucj/acorn-mongo-atlas:v#.#.#"
+	}
+
+	containers: app: {
+		image: "app-image"
+		env: {
+		  DB_HOST: "@{@{service.}db.address}"
+		  DB_PORT: "@{@{service.}db.port.27017}"
+		  DB_NAME: "@{@{service.}db.data.dbName}"
+		  DB_USER: "@{@{service.}db.secrets.user.username}"
+		  DB_PASS: "@{@{service.}db.secrets.user.password}"
+		}
+	}
+	"""
