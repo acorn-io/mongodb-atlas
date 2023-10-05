@@ -1,5 +1,8 @@
 services: db: {
-    image: "docker.io/lucj/acorn-mongo-atlas:v#.#.#"
+  image: "ghcr.io/lucj/acorn-mongo-atlas:v#.#.#"
+  serviceArgs: {
+    dbName: "mydb"
+  }
 }
 
 containers: app: {

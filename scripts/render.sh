@@ -45,6 +45,7 @@ services: atlas: {
   secrets: ["user"]
   data: {
     proto: "${DB_PROTO}"
+    dbName: "${DB_NAME}"
   }
 }
 secrets: "user": {
