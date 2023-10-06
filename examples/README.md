@@ -89,28 +89,3 @@ app-9b6876cbb-49x88: You can opt-out by running the disableTelemetry() command.
 app-9b6876cbb-49x88: 
 app-9b6876cbb-49x88: { ok: 1 }
 ```
-
-We've seen all to use a service right from a (simple) application container. In the next part we will use in a more interesting application. Before going to the next part, we delete the Acorn app and remove the Atlas cluster from the dashboard (as we've done previously).
-
-### Using the atlas service with a microservice application
-
-[https://webhooks.app/](https://webhooks.app/) is a microservice application which purpose is to provide a webhook (HTTP POST endpoint) on the fly, it is mainly dedicated to tests and demos. The source code is available in GitLab [https://gitlab.com/web-hook](https://gitlab.com/web-hook), each time a change is done in one of the microservices the application is build and pushed to the Docker Hub as an Acorn image in [https://hub.docker.com/r/lucj/webhooksapp/tags](https://hub.docker.com/r/lucj/webhooksapp/tags).
-
-The Acornfile used to build the Acorn image of the Webhooks application ([https://gitlab.com/web-hook/config/-/blob/main/apps/acorn/Acornfile](https://gitlab.com/web-hook/config/-/blob/main/apps/acorn/Acornfile)) now makes reference to the Atlas service. 
-
-In order to run the app and ensure it uses a MongoDB Atlas cluster created on the fly, we just need to use the *--atlas* flag as follows:
-
-```
-$ acorn run -n webhook lucj/webhooksapp --atlas
-...
-
-┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-| STATUS: ENDPOINTS[http://default-webhook-a1a950fb.11jp51.alpha.on-acorn.io => default:8080] HEALTHY[5] UPTODATE[5] OK |
-└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-The Atlas cluster is correctly created (this can be verified from the Atlas dashboard) and a HTTP endpoint is returned after a few tens of seconds. Using this endpoint we can access the application and verify it's working fine sending a dummy payload.
-
-![Webhooks app](../images/webhooks-1.png)
-
-![Webhooks app](../images/webhooks-2.png)
