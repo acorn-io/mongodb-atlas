@@ -2,7 +2,7 @@ name: Publish Acorn image
 on:
   push:
       tags:
-        - "v*.*.*"
+        - "v*.*-*"
 
 jobs:
   publish:
@@ -31,3 +31,4 @@ jobs:
           USER=${{ github.repository_owner }}
           REPO=${{ github.event.repository.name }}
           acorn build --platform linux/amd64 --push -t ghcr.io/$USER/$REPO:$TAG .
+          acorn build --platform linux/amd64 --push -t ghcr.io/$USER/$REPO/examples:$TAG examples
