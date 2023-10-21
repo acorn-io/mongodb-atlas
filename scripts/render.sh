@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eo pipefail
 
-echo "-> running render.sh with EVENT ${ACORN_EVENT}"
+echo "-> [render.sh][${ACORN_EVENT}]"
 
 if [ "$ACORN_EVENT" = "delete" ]; then
   # Make sure to delete the cluster only once (in case the job is triggered multiple time)
@@ -48,13 +48,6 @@ services: atlas: {
   data: {
     proto: "${DB_PROTO}"
     dbName: "${DB_NAME}"
-  }
-}
-secrets: "user": {
-  type: "basic"
-  data: {
-    username: "${DB_USER}"
-    password: "${DB_PASS}"
   }
 }
 EOF

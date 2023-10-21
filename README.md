@@ -1,3 +1,6 @@
+--- WIP ---
+Not fully functional yet
+
 ## Purpose
 
 This folder defines an Acorn service which allows to create a Mongo Atlas cluster on the fly. 
@@ -32,9 +35,7 @@ For this demo I set those 3 values in the following environment variables:
 - MONGODB_ATLAS_PRIVATE_API_KEY
 - MONGODB_ATLAS_PROJECT_ID
 
-## Running the service
-
-First we need to create the secret *atlas-creds* providing the public and private keys as well as the Atlas project ID we want the MongoDB cluster to be created in.
+Next we need to create the secret *atlas-creds* providing the public and private keys as well as the Atlas project ID we want the MongoDB cluster to be created in.
 
 Note: the following example uses environment variables already defined in the current shell 
 
@@ -47,28 +48,6 @@ acorn secrets create \
   atlas-creds
 ```
 
-Next we run the Acorn:
+## Usage
 
-```
-acorn run -n atlas .
-```
-
-In a few tens of seconds a new Atlas cluster will be up and running.
-
-![Cluster created](./images/cluster-created.png)
-
-Running the service directly was just a test to ensure a cluster is actually created from this service.
-
-Then we can delete the application, this will also delete the associated Atlas cluster:
-
-```
-acorn rm atlas --all --force
-```
-
-Note: Also, from the Atlas dashboard, we make sure to delete the cluster as we will create a new one in a next section.
-
-Please check in the examples fodler how to use this service.
-
-## Status
-
-This service is currently a WIP, feel free to give it a try. Feedback are welcome.
+Example application will be added soon
