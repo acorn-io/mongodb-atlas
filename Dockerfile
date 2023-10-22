@@ -1,3 +1,4 @@
-FROM lucj/atlas-cli:v0.2.0
-COPY ./scripts/render.sh /acorn/scripts/render.sh
+FROM lucj/atlas-cli:1.12.2
+ARG action=create
+COPY ./scripts/${action}.sh /acorn/scripts/render.sh
 ENTRYPOINT ["/acorn/scripts/render.sh"]

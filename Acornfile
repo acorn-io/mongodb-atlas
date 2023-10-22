@@ -9,10 +9,16 @@ args: {
   provider: "AWS"
 
   // Cloud provider region
-  region: "EU_WEST_1"
+  region: "US_EAST_1"
   
   // Cluster size (only M0 is free)
   tier: "M0"
+
+  // Cluster name
+  clusterName: "mytestcluster"
+
+  // Database version
+  dbVersion: "6.0"
 
   // Default database
   dbName: "mydb"
@@ -21,22 +27,40 @@ args: {
   dbUser: "myuser"
 }
 
-services: atlas: generated: job: "create-resources"
+services: atlas: generated: job: "create-cluster"
 
-jobs: "create-resources": {
+jobs: "create-cluster": {
   build: context: "."
   env: {
     MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
     MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
     MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
-    DB_USER: "secret://user/username"
-    DB_PASS: "secret://user/password"
-    DB_NAME: args.dbName
     PROVIDER: args.provider
     REGION: args.region
     TIER: args.tier
+    CLUSTER_NAME: args.clusterName
+    DB_VERSION: args.dbVersion
+    DB_USER: "secret://user/username"
+    DB_PASS: "secret://user/password"
+    DB_NAME: args.dbName
   }
-  events: ["create", "delete"]
+  events: ["create"]
+}
+
+jobs: "delete-cluster": {
+  build: {
+    context: "."
+    buildArgs: {
+        action: "delete"
+    }
+  }
+  env: {
+    MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
+    MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
+    MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
+    CLUSTER_NAME: args.clusterName
+  }
+  events: ["delete"]
 }
 
 secrets: {

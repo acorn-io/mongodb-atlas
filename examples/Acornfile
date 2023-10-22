@@ -12,7 +12,6 @@ containers: {
     ports: publish: "8000/http"
     env: {
       DB_HOST:  "@{service.db.address}"
-      DB_PORT:  "@{service.db.port.27017}"
       DB_NAME:  "@{service.db.data.dbName}"
       DB_PROTO: "@{service.db.data.proto}"
       DB_USER:  "@{service.db.secrets.user.username}"
