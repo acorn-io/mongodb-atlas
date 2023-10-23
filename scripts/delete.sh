@@ -14,4 +14,8 @@ if [ "$ACORN_EVENT" = "delete" ]; then
 
   # Delete the cluster
   atlas cluster delete --force ${CLUSTER_NAME}
+
+  # Delete user
+  atlas dbusers delete --force ${DB_USER}
+
 fi

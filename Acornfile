@@ -24,7 +24,7 @@ args: {
   dbName: "mydb"
 
   // Default user
-  dbUser: "myuser"
+  dbUser: "mytestuser"
 }
 
 services: atlas: generated: job: "create-cluster"
