@@ -1,6 +1,4 @@
-services: db: {
-	image: "ghcr.io/lucj/mongodb-atlas:v#.#-#"
-}
+services: db: image: "ghcr.io/acorn-io/mongodb-atlas:v#.#-#"
 
 containers: {
   app: {

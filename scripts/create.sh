@@ -13,7 +13,7 @@ if [ $? -eq 0 ]; then
   DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
   echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
 
-  cat > /tmp/run/secrets/output<<EOF
+  cat > /run/secrets/output<<EOF
   services: atlas: {
     address: "${DB_HOST}"
     secrets: ["user"]
@@ -61,7 +61,7 @@ DB_PROTO=$(echo $DB_ADDRESS | cut -d':' -f1)
 DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
 echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
 
-cat > /tmp/run/secrets/output<<EOF
+cat > /run/secrets/output<<EOF
 services: atlas: {
   address: "${DB_HOST}"
   secrets: ["user"]

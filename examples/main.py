@@ -14,9 +14,13 @@ DB_PORT = os.environ.get('DB_PORT', '27017')
 DB_USER = os.environ.get('DB_USER')
 DB_PASS = os.environ.get('DB_PASS')
 DB_NAME = os.environ.get('DB_NAME')
-DB_PROTO = os.environ.get('DB_PROTO', 'mongodb')
+DB_PROTO = os.environ.get('DB_PROTO', 'mongodb+svr')
 
-MONGO_URI = f"{DB_PROTO}://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}?authSource=admin"
+# Default mongo connection string
+MONGO_URI = f"{DB_PROTO}://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}?authSource=admin"
+
+if DB_PROTO == "mongodb":
+  MONGO_URI = f"{DB_PROTO}://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}?authSource=admin"
 
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME] 

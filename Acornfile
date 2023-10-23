@@ -96,7 +96,7 @@ localData: info: """
 	## Usage
 
 	services: db: {
-		image: "ghcr.io/lucj/mongodb-atlas:v#.#-#"
+		image: "ghcr.io/acorn-io/mongodb-atlas:v#.#-#"
 	}
 
 	containers: app: {
