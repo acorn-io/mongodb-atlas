@@ -1,32 +1,19 @@
-services: db: {
-  image: "ghcr.io/lucj/acorn-mongo-atlas:v#.#.#"
-  serviceArgs: {
-    dbName: "mydb"
-  }
-}
+services: db: image: "ghcr.io/acorn-io/mongodb-atlas:v#.#-#"
 
-containers: app: {
-  image: "mongo:6.0.5"
-  entrypoint: ["/bin/sh", "-c", "/check-db.sh"]
-  env: {
-    DB_HOST: "@{service.db.address}"
-    DB_NAME: "@{service.db.data.dbName}"
-    DB_PROTO: "@{service.db.data.proto}"
-    DB_USER: "@{service.db.secrets.user.username}"
-    DB_PASS: "@{service.db.secrets.user.password}"
+containers: {
+  app: {
+    build: {
+			context: "."
+			target:  "dev"
+		}
+    consumes: ["db"]
+    ports: publish: "8000/http"
+    env: {
+      DB_HOST:  "@{service.db.address}"
+      DB_NAME:  "@{service.db.data.dbName}"
+      DB_PROTO: "@{service.db.data.proto}"
+      DB_USER:  "@{service.db.secrets.user.username}"
+      DB_PASS:  "@{service.db.secrets.user.password}"
+    }
   }
-  files: "/check-db.sh": """
-    echo "Will try to connect to cluster"
-    while true; do
-      echo "=> testing DB connection..."
-      mongosh ${DB_PROTO}://${DB_HOST} -u ${DB_USER} -p ${DB_PASS} --eval "db.adminCommand('ping')" 
-      if [ $? -eq 0 ]; then
-        break
-      else
-        sleep 5
-      fi
-    done
-    echo "connected to the DB"
-    sleep 3600
-  """
 }
