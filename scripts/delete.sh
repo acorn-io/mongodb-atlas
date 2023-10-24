@@ -1,21 +1,31 @@
 #!/bin/sh
 # set -eo pipefail
 
-echo "-> [delete.sh][${ACORN_EVENT}]"
+echo "-> [delete.sh]"
 
-# Make sure correct event is sent to the deletion job
-if [ "$ACORN_EVENT" = "delete" ]; then
-  # Make sure the cluster exists
-  atlas cluster get ${CLUSTER_NAME} 2>/dev/null
-  if [ $? -ne 0 ]; then
-    echo "cluster ${CLUSTER_NAME} does not exist"
-    exit 0
-  fi
+# Make sure this script only repply on an Acorn deletion event
+if [ "${ACORN_EVENT}" != "delete" ]; then
+   echo "ACORN_EVENT must be [delete], currently is [${ACORN_EVENT}]"
+   exit 0
+fi
 
-  # Delete the cluster
-  atlas cluster delete --force ${CLUSTER_NAME}
+# Make sure the cluster exists
+atlas cluster get ${CLUSTER_NAME} 2>/dev/null
+if [ $? -ne 0 ]; then
+  echo "cluster ${CLUSTER_NAME} does not exist"
+  exit 0
+fi
 
-  # Delete user
-  atlas dbusers delete --force ${DB_USER}
+# Delete the cluster
+echo "-> deleting cluster ${CLUSTER_NAME}"
+res=$(atlas cluster delete --force ${CLUSTER_NAME})
+if [ $? -ne 0 ]; then
+  echo $res
+fi
 
+# Delete user
+echo "-> deleting associated user ${DB_USER}"
+res=$(atlas dbusers delete --force ${DB_USER})
+if [ $? -ne 0 ]; then
+  echo $res
 fi
