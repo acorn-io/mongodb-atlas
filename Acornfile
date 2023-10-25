@@ -58,7 +58,7 @@ jobs: "delete-cluster": {
     MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
     MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
     MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
-    CLUSTER_NAME: args.clusterName
+    CLUSTER_NAME: "secret://state/cluster_name"
     DB_USER: "secret://user/username"
   }
   events: ["delete"]
@@ -90,6 +90,13 @@ secrets: {
           private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
           project_id: "MONGODB_ATLAS_PROJECT_ID"
       }
+  }
+}
+
+secrets: {
+  "state": {
+    type: "generated"
+    params: job: "create-cluster"
   }
 }
 

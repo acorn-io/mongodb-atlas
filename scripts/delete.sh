@@ -10,9 +10,10 @@ if [ "${ACORN_EVENT}" != "delete" ]; then
 fi
 
 # Make sure the cluster exists
+echo "-> checking if cluster ${CLUSTER_NAME} exists"
 atlas cluster get ${CLUSTER_NAME} 2>/dev/null
 if [ $? -ne 0 ]; then
-  echo "cluster ${CLUSTER_NAME} does not exist"
+  echo "-> cluster ${CLUSTER_NAME} does not exist"
   exit 0
 fi
 

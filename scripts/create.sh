@@ -13,27 +13,10 @@ fi
 atlas cluster get ${CLUSTER_NAME} 2>/dev/null
 if [ $? -eq 0 ]; then
   echo "-> cluster ${CLUSTER_NAME} already exists"
-
-  DB_ADDRESS=$(atlas cluster describe ${CLUSTER_NAME} -o json | jq -r .connectionStrings.standardSrv)
-  DB_PROTO=$(echo $DB_ADDRESS | cut -d':' -f1)
-  DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
-  echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
-
-  cat > /run/secrets/output<<EOF
-  services: atlas: {
-    address: "${DB_HOST}"
-    secrets: ["user"]
-    ports: "27017"
-    data: {
-      proto: "${DB_PROTO}"
-      dbName: "${DB_NAME}"
-    }
-  }
-EOF
-  exit 0
-else
-  echo "-> cluster ${CLUSTER_NAME} does not exist"
+  exit 1
 fi
+
+echo "-> cluster ${CLUSTER_NAME} does not exist"
 
 # Create a cluster in the current project
 echo "-> about to create cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
@@ -84,6 +67,11 @@ services: atlas: {
   data: {
     proto: "${DB_PROTO}"
     dbName: "${DB_NAME}"
+  }
+}
+secrets: state: {
+  data: {
+    cluster_name: "${CLUSTER_NAME}"
   }
 }
 EOF
