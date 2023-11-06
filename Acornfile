@@ -5,92 +5,113 @@ info:        localData.info
 icon:        "./icon.png"
 
 args: {
-  // Cloud provider
-  provider: "AWS"
+	// Cloud provider
+	provider: "AWS"
 
-  // Cloud provider region
-  region: "US_EAST_1"
-  
-  // Cluster size (only M0 is free)
-  tier: "M0"
+	// Cloud provider region
+	region: "US_EAST_1"
 
-  // Cluster name
-  clusterName: "mytestcluster"
+	// Cluster size (only M0 is free)
+	tier: "M0"
 
-  // Database version
-  dbVersion: "6.0"
+	// Cluster name
+	clusterName: "mytestcluster"
 
-  // Default database
-  dbName: "mydb"
+	// Database version
+	dbVersion: "6.0"
 
-  // Default user
-  dbUser: "mytestuser"
+	// Default database
+	dbName: "mydb"
+
+	// Default user
+	dbUser: "mytestuser"
+
+	// Do not launch the credential helper, use external credentials
+	useExternalCreds: false
+}
+
+if !args.useExternalCreds {
+	acorns: "cred-helper": {
+		image: "ghcr.io/acorn-io/secret-create-helper:v0.#.#-#"
+		deployArgs: {
+			secretKeys:   "public_key,private_key,project_id"
+			instructions: localData.credInfo
+		}
+	}
 }
 
 services: atlas: generated: job: "create-cluster"
 
 jobs: "create-cluster": {
-  build: context: "."
-  env: {
-    MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
-    MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
-    MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
-    PROVIDER: args.provider
-    REGION: args.region
-    TIER: args.tier
-    CLUSTER_NAME: args.clusterName
-    DB_VERSION: args.dbVersion
-    DB_USER: "secret://user/username"
-    DB_PASS: "secret://user/password"
-    DB_NAME: args.dbName
-  }
-  events: ["create"]
+	build: context: "."
+	env: {
+		MONGODB_ATLAS_PUBLIC_API_KEY:  "secret://atlas-creds/public_key"
+		MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
+		MONGODB_ATLAS_PROJECT_ID:      "secret://atlas-creds/project_id"
+		PROVIDER:                      args.provider
+		REGION:                        args.region
+		TIER:                          args.tier
+		CLUSTER_NAME:                  args.clusterName
+		DB_VERSION:                    args.dbVersion
+		DB_USER:                       "secret://user/username"
+		DB_PASS:                       "secret://user/password"
+		DB_NAME:                       args.dbName
+	}
+	events: ["create"]
 }
 
 jobs: "delete-cluster": {
-  build: {
-    context: "."
-    buildArgs: {
-        action: "delete"
-    }
-  }
-  env: {
-    MONGODB_ATLAS_PUBLIC_API_KEY: "secret://atlas-creds/public_key"
-    MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
-    MONGODB_ATLAS_PROJECT_ID: "secret://atlas-creds/project_id"
-    CLUSTER_NAME: args.clusterName
-    DB_USER: "secret://user/username"
-  }
-  events: ["delete"]
+	build: {
+		context: "."
+		buildArgs: {
+			action: "delete"
+		}
+	}
+	env: {
+		MONGODB_ATLAS_PUBLIC_API_KEY:  "secret://atlas-creds/public_key"
+		MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
+		MONGODB_ATLAS_PROJECT_ID:      "secret://atlas-creds/project_id"
+		CLUSTER_NAME:                  args.clusterName
+		DB_USER:                       "secret://user/username"
+	}
+	events: ["delete"]
 }
 
 secrets: {
-  user: {
-    name: "user credentials"
-    type: "basic"
-    params: {
-        usernameLength: 7
-        usernameCharacters: "a-z"
-        passwordLength: 10
-        passwordCharacters: "A-Za-z0-9"
-    }
-    data: {  
-        username: std.ifelse(args.dbUser != "", args.dbUser, "")
-        password: ""
-    }
-  }
+	user: {
+		name: "user credentials"
+		type: "basic"
+		params: {
+			usernameLength:     7
+			usernameCharacters: "a-z"
+			passwordLength:     10
+			passwordCharacters: "A-Za-z0-9"
+		}
+		data: {
+			username: std.ifelse(args.dbUser != "", args.dbUser, "")
+			password: ""
+		}
+	}
 }
 
-secrets: {
-  "atlas-creds": {
-      external: "atlas-creds"
-      type: "opaque"
-      data: {
-          public_key: "MONGODB_ATLAS_PUBLIC_API_KEY"
-          private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
-          project_id: "MONGODB_ATLAS_PROJECT_ID"
-      }
-  }
+if args.useExternalCreds {
+	secrets: {
+		"atlas-creds": {
+			external: "atlas-creds"
+			type:     "opaque"
+			data: {
+				public_key:  "MONGODB_ATLAS_PUBLIC_API_KEY"
+				private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
+				project_id:  "MONGODB_ATLAS_PROJECT_ID"
+			}
+		}
+	}
+} else {
+	secrets: {
+		"atlas-creds": {
+			alias: "cred-helper.output"
+		}
+	}
 }
 
 localData: info: """
@@ -112,3 +133,20 @@ localData: info: """
 		}
 	}
 	"""
+
+localData: credInfo: """
+    ## Mongo DB Atlas Setup Instructions
+       	
+    To use this service, you need to supply Mongo Atlas credentials. 
+    We will need:
+        
+    * Public key
+    * Private key
+    * Project ID
+        
+    You will need to log into Mongo Atlas or 
+    <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank">create a new account</a> to obtain these values. 
+        
+    To learn how to create an API Key on Mongo Atlas, please see: 
+    <a href="https://www.mongodb.com/docs/atlas/configure-api-access/#invite-an-organization-api-key-to-a-project" target="_blank">Instructions Here.</a>
+    """
