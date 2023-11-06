@@ -25,13 +25,18 @@ args: {
 
 	// Default user
 	dbUser: "mytestuser"
+
+	// Do not launch the credential helper, use external credentials
+	useExternalCreds: false
 }
 
-acorns: "cred-helper": {
-	image: "index.docker.io/cloudnautique/cred-helper:v#.#.#"
-	deployArgs: {
-		secretKeys:   "public_key,private_key,project_id"
-		instructions: localData.credInfo
+if !args.useExternalCreds {
+	acorns: "cred-helper": {
+		image: "ghcr.io/acorn-io/secret-create-helper:v0.#.#-#"
+		deployArgs: {
+			secretKeys:   "public_key,private_key,project_id"
+			instructions: localData.credInfo
+		}
 	}
 }
 
@@ -89,9 +94,23 @@ secrets: {
 	}
 }
 
-secrets: {
-	"atlas-creds": {
-		alias: "secrets.cred-helper.output"
+if args.useExternalCreds {
+	secrets: {
+		"atlas-creds": {
+			external: "atlas-creds"
+			type:     "opaque"
+			data: {
+				public_key:  "MONGODB_ATLAS_PUBLIC_API_KEY"
+				private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
+				project_id:  "MONGODB_ATLAS_PROJECT_ID"
+			}
+		}
+	}
+} else {
+	secrets: {
+		"atlas-creds": {
+			alias: "cred-helper.output"
+		}
 	}
 }
 
@@ -117,9 +136,17 @@ localData: info: """
 
 localData: credInfo: """
     ## Mongo DB Atlas Setup Instructions
-    To use this service, you need to supply Mongo Atlas credentials. We will need
-    the Private Key, Project ID, and Public key. You will need to log into Mongo 
-    Atlas to create these. 
-    
+       	
+    To use this service, you need to supply Mongo Atlas credentials. 
+    We will need:
+        
+    * Public key
+    * Private key
+    * Project ID
+        
+    You will need to log into Mongo Atlas or 
+    <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank">create a new account</a> to obtain these values. 
+        
+    To learn how to create an API Key on Mongo Atlas, please see: 
     <a href="https://www.mongodb.com/docs/atlas/configure-api-access/#invite-an-organization-api-key-to-a-project" target="_blank">Instructions Here.</a>
     """
