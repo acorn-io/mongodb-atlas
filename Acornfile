@@ -45,6 +45,7 @@ services: atlas: generated: job: "create-cluster"
 jobs: "create-cluster": {
 	build: context: "."
 	env: {
+		ACORN_EXTERNAL_ID:             "@{acorn.externalID}"
 		MONGODB_ATLAS_PUBLIC_API_KEY:  "secret://atlas-creds/public_key"
 		MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
 		MONGODB_ATLAS_PROJECT_ID:      "secret://atlas-creds/project_id"
@@ -68,6 +69,7 @@ jobs: "delete-cluster": {
 		}
 	}
 	env: {
+		ACORN_EXTERNAL_ID:             "@{acorn.externalID}"
 		MONGODB_ATLAS_PUBLIC_API_KEY:  "secret://atlas-creds/public_key"
 		MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
 		MONGODB_ATLAS_PROJECT_ID:      "secret://atlas-creds/project_id"
