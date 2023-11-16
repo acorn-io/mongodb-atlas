@@ -3,7 +3,7 @@
 
 echo "[create.sh]"
 
-# Make sure this script only repply on an Acorn creation event
+# Make sure this script only replies to an Acorn creation event
 if [ "${ACORN_EVENT}" != "create" ]; then
    echo "ACORN_EVENT must be [create], currently is [${ACORN_EVENT}]"
    exit 0
@@ -54,9 +54,16 @@ fi
 
 # Create db user
 echo "creating a database user"
+CREATED_DB_USER=""
 res=$(atlas dbusers create --username ${DB_USER} --password ${DB_PASS} --role readWrite@${DB_NAME})
 if [ $? -ne 0 ]; then
   echo $res
+  echo "database user not created"
+else
+  # Keep track of created user
+  # Used in the deletion step to prevent deletion of a pre-existing user
+  echo "database user created"
+  CREATED_DB_USER=${DB_USER}
 fi
 
 # Extract proto and host from address returned
@@ -72,6 +79,11 @@ services: atlas: {
   data: {
     proto: "${DB_PROTO}"
     dbName: "${DB_NAME}"
+  }
+}
+secrets: state: {
+  data: {
+    created_user: "${CREATED_DB_USER}"
   }
 }
 EOF

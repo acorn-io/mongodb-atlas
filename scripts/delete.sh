@@ -40,11 +40,15 @@ else
   echo "cluster deleted" 
 fi
 
-# Delete user
-echo "-> deleting associated user ${DB_USER}"
-res=$(atlas dbusers delete --force ${DB_USER})
-if [ $? -ne 0 ]; then
-  echo "error deleting dbuser: $res"
+# Delete user (only if created by this service)
+if [ "${CREATED_USER}" != "" ]; then
+  echo "deleting db user ${CREATED_USER}"
+  res=$(atlas dbusers delete --force ${CREATED_USER})
+  if [ $? -ne 0 ]; then
+    echo "error deleting dbuser: $res"
+  else
+    echo "dbuser deleted"
+  fi
 else
-  echo "dbuser deleted"
-fi
+  echo "no user to delete as none was created by this service"
+fi 
