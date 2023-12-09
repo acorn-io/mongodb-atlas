@@ -11,7 +11,7 @@ args: {
 	// Cloud provider region
 	region: "US_EAST_1"
 
-	// Cluster size (only M0 is free)
+	// Cluster size (only M0 is free). See https://dochub.mongodb.org/core/cluster-tier-atlas for available tiers
 	tier: "M0"
 
 	// Cluster name
@@ -25,22 +25,12 @@ args: {
 
 	// Default user
 	dbUser: "mytestuser"
-
-	// Do not launch the credential helper, use external credentials
-	useExternalCreds: false
 }
 
-if !args.useExternalCreds {
-	acorns: "cred-helper": {
-		image: "ghcr.io/acorn-io/secret-create-helper:v0.#.#-#"
-		deployArgs: {
-			secretKeys:   "public_key,private_key,project_id"
-			instructions: localData.credInfo
-		}
-	}
+services: atlas: {
+	generated: job: "create-cluster"
+	default: true
 }
-
-services: atlas: generated: job: "create-cluster"
 
 jobs: "create-cluster": {
 	build: context: "."
@@ -56,8 +46,10 @@ jobs: "create-cluster": {
 		DB_USER:                       "secret://user/username"
 		DB_PASS:                       "secret://user/password"
 		DB_NAME:                       args.dbName
+		DB_ROOT_USER:                  "secret://admin/username"
+		DB_ROOT_PASS:                  "secret://admin/password"
 	}
-	events: ["create"]
+	events: ["create", "update"]
 }
 
 jobs: "delete-cluster": {
@@ -77,40 +69,44 @@ jobs: "delete-cluster": {
 	events: ["delete"]
 }
 
-secrets: {
-	user: {
-		name: "user credentials"
-		type: "basic"
-		params: {
-			usernameLength:     7
-			usernameCharacters: "a-z"
-			passwordLength:     10
-			passwordCharacters: "A-Za-z0-9"
-		}
-		data: {
-			username: std.ifelse(args.dbUser != "", args.dbUser, "")
-			password: ""
-		}
+secrets: user: {
+	name: "user credentials"
+	type: "basic"
+	params: {
+		usernameLength:     7
+		usernameCharacters: "a-z"
+		passwordLength:     10
+		passwordCharacters: "A-Za-z0-9"
+	}
+	data: {
+		username: std.ifelse(args.dbUser != "", args.dbUser, "")
+		password: ""
 	}
 }
 
-if args.useExternalCreds {
-	secrets: {
-		"atlas-creds": {
-			external: "atlas-creds"
-			type:     "opaque"
-			data: {
-				public_key:  "MONGODB_ATLAS_PUBLIC_API_KEY"
-				private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
-				project_id:  "MONGODB_ATLAS_PROJECT_ID"
-			}
-		}
+secrets: "atlas-creds": {
+	type: "credential.cloud.mongodb.com/atlas"
+	params: {
+		instructions: localData.credInfo
+		promptOrder: ["public_key", "private_key", "project_id"]
 	}
-} else {
-	secrets: {
-		"atlas-creds": {
-			alias: "cred-helper.output"
-		}
+	data: {
+		public_key:  "MONGODB_ATLAS_PUBLIC_API_KEY"
+		private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
+		project_id:  "MONGODB_ATLAS_PROJECT_ID"
+	}
+}
+
+secrets: admin: {
+	name: "credentials of the admin user"
+	type: "basic"
+	params: {
+		passwordLength:     10
+		passwordCharacters: "A-Za-z0-9"
+	}
+	data: {
+		username: "root"
+		password: ""
 	}
 }
 
@@ -127,7 +123,7 @@ localData: info: """
 		  DB_HOST:  "@{@{service.}db.address}"
 		  DB_PORT:  "@{@{service.}db.port.27017}"
 		  DB_NAME:  "@{@{service.}db.data.dbName}"
-      DB_PROTO: "@{@{service.}db.data.proto}"
+          DB_PROTO: "@{@{service.}db.data.proto}"
 		  DB_USER:  "@{@{service.}db.secrets.user.username}"
 		  DB_PASS:  "@{@{service.}db.secrets.user.password}"
 		}
@@ -144,9 +140,8 @@ localData: credInfo: """
     * Private key
     * Project ID
         
-    You will need to log into Mongo Atlas or 
-    <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank">create a new account</a> to obtain these values. 
+    You will need to log into Mongo Atlas or [create a new account](https://www.mongodb.com/cloud/atlas/register) to obtain these values. 
         
     To learn how to create an API Key on Mongo Atlas, please see: 
-    <a href="https://www.mongodb.com/docs/atlas/configure-api-access/#invite-an-organization-api-key-to-a-project" target="_blank">Instructions Here.</a>
+    [https://www.mongodb.com/docs/atlas/configure-api-access/#invite-an-organization-api-key-to-a-project](https://www.mongodb.com/docs/atlas/configure-api-access/#invite-an-organization-api-key-to-a-project)
     """
