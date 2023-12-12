@@ -25,6 +25,9 @@ args: {
 
 	// Default user
 	dbUser: "mytestuser"
+
+	// Disk size in GB. Ignored for M0, M2, and M5 clusters. Defaults to 10GB for M10+ clusters
+	diskSizeGB: 10
 }
 
 services: atlas: {
@@ -48,6 +51,9 @@ jobs: "create-cluster": {
 		DB_NAME:                       args.dbName
 		DB_ROOT_USER:                  "secret://admin/username"
 		DB_ROOT_PASS:                  "secret://admin/password"
+		if args.tier != "M0" || args.tier != "M2" || args.tier != "M5" {
+			DISK_SIZE_GB: "\(args.diskSizeGB)"
+		}
 	}
 	events: ["create", "update"]
 }

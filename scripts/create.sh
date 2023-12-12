@@ -32,18 +32,29 @@ render_service() {
 EOF
 }
 
+disk_size_arg() {
+  if [ -n "${DISK_SIZE_GB}" ]; then
+    echo "--diskSizeGB ${DISK_SIZE_GB}"
+  fi
+}
+
 # Check if cluster with that name already exit
 atlas cluster get ${CLUSTER_NAME} 2>/dev/null
 if [ $? -ne 0 ]; then
   echo "-> cluster ${CLUSTER_NAME} does not exist"
 
+  disk_arg=$(disk_size_arg)
   # Create a cluster in the current project
   echo "-> about to create cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
-  result=$(atlas cluster create ${CLUSTER_NAME} --region $REGION --provider $PROVIDER --tier $TIER --tag creator=acorn_service --mdbVersion $DB_VERSION)
+  result=$(atlas cluster create ${CLUSTER_NAME} \
+          --region $REGION --provider $PROVIDER \
+          --tier $TIER --tag creator=acorn_service \
+          --mdbVersion $DB_VERSION --${disk_arg} 2>&1)
   
   # Make sure the cluster was created correctly
   if [ $? -ne 0 ]; then
     echo $result
+    echo $result > /dev/termination_log
     exit 1
   fi
   
@@ -58,7 +69,25 @@ if [ $? -ne 0 ]; then
       break
     fi
   done
+else
+  echo "-> cluster ${CLUSTER_NAME} already exist"
 
+  if atlas cluster get ${CLUSTER_NAME} -o json 2>&1 | grep ${TIER} > /dev/null ; then
+    echo "-> cluster ${CLUSTER_NAME} already has the correct tier"
+  else
+    echo "-> updating cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
+    disk_arg=$(disk_size_arg)
+    echo ${disk_arg}
+    result=$(atlas cluster upgrade "${CLUSTER_NAME}" --tier ${TIER} \
+             --tag creator=acorn_service \
+             --mdbVersion $DB_VERSION \
+             ${disk_arg} 2>&1)
+    if [ $? -ne 0 ]; then
+      echo $result
+      echo $result > /dev/termination_log
+      exit 1
+    fi
+  fi
 fi
 
 # Allow database network access from current IP
@@ -85,6 +114,7 @@ db_user_create() {
 db_user_exists() {
   res=$(atlas dbusers describe $1 2>&1 >/dev/null)
   if [ $? -ne 0 ]; then
+    echo ${res} > /dev/termination_log
     return 1
   fi
 }
@@ -96,7 +126,7 @@ if db_user_exists "${DB_ROOT_USER}"; then
   db_user_update "${DB_ROOT_USER}" --password "${DB_ROOT_PASS}" --role "dbAdmin@{DB_NAME},readWrite@${DB_NAME}"
 else
   echo "-> creating user ${DB_ROOT_USER}"
-  db_user_create --username "${DB_ROOT_USER}" --password "${DB_ROOT_PASS}" --role "dbAdmin@{DB_NAME},readWrite@${DB_NAME}"
+  db_user_create --username "${DB_ROOT_USER}" --password "${DB_ROOT_PASS}" --role "dbAdmin@${DB_NAME},readWrite@${DB_NAME}"
 fi
 
 # handle db user
