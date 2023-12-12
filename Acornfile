@@ -51,7 +51,7 @@ jobs: "create-cluster": {
 		DB_NAME:                       args.dbName
 		DB_ROOT_USER:                  "secret://admin/username"
 		DB_ROOT_PASS:                  "secret://admin/password"
-		if args.tier != "M0" || args.tier != "M2" || args.tier != "M5" {
+		if (args.tier != "M0" && args.tier != "M2" && args.tier != "M5") {
 			DISK_SIZE_GB: "\(args.diskSizeGB)"
 		}
 	}
