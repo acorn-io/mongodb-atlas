@@ -102,12 +102,16 @@ Note: the following example uses environment variables already defined in the cu
 
 ```
 acorn secrets create \
-  --type opaque \
+  --type credential.cloud.mongodb.com/atlas \
   --data public_key=$MONGODB_ATLAS_PUBLIC_API_KEY \
   --data private_key=$MONGODB_ATLAS_PRIVATE_API_KEY \
   --data project_id=$MONGODB_ATLAS_PROJECT_ID \
   atlas-creds
 ```
+
+## Updating/Upgrading
+
+When changing Tiers, you must follow the MongoDB atlas upgrade path. You can only upgrade an M0, M2, or M5 Cluster to an M10+ Cluster.
 
 ## Status
 

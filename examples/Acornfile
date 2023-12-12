@@ -1,19 +1,28 @@
-services: db: image: "ghcr.io/acorn-io/mongodb-atlas:v#.#-#"
+services: db: {
+	if args.dev {
+		build: {
+			context:   "../"
+			acornfile: "../Acornfile"
+		}
+	} else {
+		image: "ghcr.io/acorn-io/mongodb-atlas:v#.#-#"
+	}
+}
 
 containers: {
-  app: {
-    build: {
+	app: {
+		build: {
 			context: "."
 			target:  "dev"
 		}
-    consumes: ["db"]
-    ports: publish: "8000/http"
-    env: {
-      DB_HOST:  "@{service.db.address}"
-      DB_NAME:  "@{service.db.data.dbName}"
-      DB_PROTO: "@{service.db.data.proto}"
-      DB_USER:  "@{service.db.secrets.user.username}"
-      DB_PASS:  "@{service.db.secrets.user.password}"
-    }
-  }
+		consumes: ["db"]
+		ports: publish: "8000/http"
+		env: {
+			DB_HOST:  "@{service.db.address}"
+			DB_NAME:  "@{service.db.data.dbName}"
+			DB_PROTO: "@{service.db.data.proto}"
+			DB_USER:  "@{service.db.secrets.user.username}"
+			DB_PASS:  "@{service.db.secrets.user.password}"
+		}
+	}
 }

@@ -1,5 +1,5 @@
 FROM alpine:3.18
-ARG ATLAS_CLI_VERSION="1.12.2"
+ARG ATLAS_CLI_VERSION="1.14.0"
 ARG action=create
 RUN apk add -u jq
 RUN OS="$(uname | tr '[:upper:]' '[:lower:]')" \
