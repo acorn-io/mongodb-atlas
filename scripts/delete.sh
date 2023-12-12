@@ -9,35 +9,17 @@ if [ "${ACORN_EVENT}" != "delete" ]; then
    exit 0
 fi
 
-# Make sure a cluster with the name provided exists
-cluster=$(atlas cluster list -o json | jq -r --arg cluster_name "$CLUSTER_NAME" '
-  if .results then
-    .results[] | select(.name == $cluster_name)
+# Delete the cluster (if created by this service)
+if [ "${CREATED_CLUSTER}" != "" ]; then
+  echo "deleting cluster ${CREATED_CLUSTER}"
+  res=$(atlas cluster delete --force ${CLUSTER_NAME})
+  if [ $? -ne 0 ]; then
+    echo "error deleting cluster: $res"
   else
-    empty
-  end
-')
-if [ "$cluster" = "" ]; then
-  echo "cluster ${CLUSTER_NAME} does not exists" | tee /dev/termination-log
-  exit 1
-fi 
-echo "cluster ${CLUSTER_NAME} found"
-
-# Make sure the cluster retrieved has the correct acornid tag
-cluster_acorn_id=$(echo $cluster | jq -r '.tags[] | select(.key == "acornid") | .value')
-if [ "$cluster_acorn_id" != "$ACORN_EXTERNAL_ID" ]; then
-  echo "cluster ${CLUSTER_NAME} does not have the correct Acorn ID ($ACORN_EXTERNAL_ID) => atlas cluster will not be deleted"
-  exit 0
-fi
-echo "cluster ${CLUSTER_NAME} has the correct Acorn ID ($ACORN_EXTERNAL_ID)"
-
-# Delete the cluster
-echo "deleting cluster ${CLUSTER_NAME}"
-res=$(atlas cluster delete --force ${CLUSTER_NAME})
-if [ $? -ne 0 ]; then
-  echo "error deleting cluster: $res"
+    echo "cluster deleted" 
+  fi
 else
-  echo "cluster deleted" 
+  echo "no cluster created by the service"
 fi
 
 # Delete root user if created by this service

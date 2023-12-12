@@ -7,42 +7,17 @@ echo "[create.sh]"
 termination_log="/dev/termination-log"
 acorn_output="/run/secrets/output"
 
-# Make sure this script only repply on an Acorn creation event
+# Make sure this script is only triggered on Acorn creation and update events
+echo "event: ${ACORN_EVENT}"
 if [ "${ACORN_EVENT}" = "delete" ]; then
-   echo "ACORN_EVENT must be [create,update], currently is [${ACORN_EVENT}]"
+   echo "ACORN_EVENT must be [create/update], currently is [${ACORN_EVENT}]"
    exit 0
 fi
 
-render_service() {
-  local CLUSTER_NAME=$1
-  local CREATED_DB_ROOT_USER=$2
-  local CREATED_DB_USER=$3
-  local db_name=${DB_NAME}
-
-  DB_ADDRESS=$(atlas cluster describe ${CLUSTER_NAME} -o json | jq -r .connectionStrings.standardSrv)
-  DB_PROTO=$(echo $DB_ADDRESS | cut -d':' -f1)
-  DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
-  echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
-
-  cat > ${acorn_output}<<EOF
-  services: atlas: {
-    address: "${DB_HOST}"
-    default: true
-    secrets: ["admin", "user"]
-    ports: "27017"
-    data: {
-      proto: "${DB_PROTO}"
-      dbName: "${db_name}"
-    }
-  }
-  secrets: state: {
-    data: {
-      created_db_user: "${CREATED_DB_USER}"
-      created_db_root_user: "${CREATED_DB_ROOT_USER}"
-    }
-}
-EOF
-}
+# Keep track of the resources created
+created_db_root_user=""
+created_db_user=""
+created_cluster=""
 
 disk_size_arg() {
   if [ -n "${DISK_SIZE_GB}" ]; then
@@ -65,9 +40,8 @@ db_user_create() {
 }
 
 db_user_exists() {
-  res=$(atlas dbusers describe $1 2>&1 >/dev/null)
+  atlas dbusers describe $1 2>&1 >/dev/null
   if [ $? -ne 0 ]; then
-    echo ${res} | tee ${termination_log}
     return 1
   fi
 }
@@ -79,57 +53,43 @@ REGION=$(echo $REGION | tr a-z A-Z)
 
 # Check if cluster with that name already exit
 atlas cluster get ${CLUSTER_NAME} 2>/dev/null
-if [ $? -ne 0 ]; then
-  echo "-> cluster ${CLUSTER_NAME} does not exist"
-
-  disk_arg=$(disk_size_arg)
-
-  # Create a cluster in the current project
-  echo "-> about to create cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
-  result=$(atlas cluster create ${CLUSTER_NAME} \
-          --region $REGION --provider $PROVIDER \
-          --tier $TIER --tag creator=acorn_service \
-          --tag acornid=${ACORN_EXTERNAL_ID} \
-          --mdbVersion $DB_VERSION --${disk_arg} 2>&1)
-
-  # Make sure the cluster was created correctly
-  if [ $? -ne 0 ]; then
-    echo $result
-    echo $result | tee ${termination_log}
-    exit 1
-  fi
-  
-  # Wait for Atlas to provide cluster's connection string
-  echo "-> waiting for database address"
-  while true; do
-    DB_ADDRESS=$(atlas cluster describe ${CLUSTER_NAME} -o json | jq -r .connectionStrings.standardSrv)
-    if [ "${DB_ADDRESS}" = "null" ]; then
-        sleep 2
-        echo "... retrying"
-    else
-      break
-    fi
-  done
-else
-  echo "-> cluster ${CLUSTER_NAME} already exist"
-
-  if atlas cluster get ${CLUSTER_NAME} -o json 2>&1 | grep ${TIER} > /dev/null ; then
-    echo "-> cluster ${CLUSTER_NAME} already has the correct tier"
-  else
-    echo "-> updating cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
-    disk_arg=$(disk_size_arg)
-    echo ${disk_arg}
-    result=$(atlas cluster upgrade "${CLUSTER_NAME}" --tier ${TIER} \
-             --tag creator=acorn_service \
-             --mdbVersion $DB_VERSION \
-             ${disk_arg} 2>&1)
-    if [ $? -ne 0 ]; then
-      echo $result
-      echo $result | tee ${termination_log}
-      exit 1
-    fi
-  fi
+if [ $? -eq 0 ]; then
+  echo "-> cluster ${CLUSTER_NAME} already exist" | tee ${termination_log}
+  exit 1
 fi
+echo "-> cluster ${CLUSTER_NAME} does not exist"
+
+disk_arg=$(disk_size_arg)
+
+# Create a cluster in the current project
+echo "-> about to create cluster ${CLUSTER_NAME} of type ${TIER} in ${PROVIDER} / ${REGION}"
+result=$(atlas cluster create ${CLUSTER_NAME} \
+  --region $REGION --provider $PROVIDER \
+  --tier $TIER --tag creator=acorn_service \
+  --tag acornid=${ACORN_EXTERNAL_ID} \
+  --mdbVersion $DB_VERSION --${disk_arg} 2>&1)
+
+# Make sure the cluster was created correctly
+if [ $? -ne 0 ]; then
+  echo $result
+  echo $result | tee ${termination_log}
+  exit 1
+fi
+
+# Keep track of the created cluster
+created_cluster="${CLUSTER_NAME}"
+
+# Wait for Atlas to provide cluster's connection string
+echo "-> waiting for database address"
+while true; do
+  DB_ADDRESS=$(atlas cluster describe ${CLUSTER_NAME} -o json | jq -r .connectionStrings.standardSrv)
+  if [ "${DB_ADDRESS}" = "null" ]; then
+      sleep 2
+      echo "... retrying"
+  else
+    break
+  fi
+done
 
 # Allow database network access from current IP
 echo "allowing connection from current IP address"
@@ -137,10 +97,6 @@ res=$(atlas accessList create --currentIp)
 if [ $? -ne 0 ]; then
   echo $res
 fi
-
-# Handle users and keep track of the ones created
-created_db_root_user=""
-created_db_user=""
 
 # Handle admin db user
 # check in atlas if the user exists
@@ -160,7 +116,32 @@ if db_user_exists "${DB_USER}"; then
 else
   echo "-> creating user ${DB_USER}"
   db_user_create --username "${DB_USER}" --password "${DB_PASS}" --role "readWrite@${DB_NAME}"
-  created_user=${DB_USER}
+  created_db_user=${DB_USER}
 fi
 
-render_service ${CLUSTER_NAME} ${created_db_root_user} ${created_db_user}
+# Get database connection info
+DB_ADDRESS=$(atlas cluster describe ${CLUSTER_NAME} -o json | jq -r .connectionStrings.standardSrv)
+DB_PROTO=$(echo $DB_ADDRESS | cut -d':' -f1)
+DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
+echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
+
+# Render service
+cat > ${acorn_output}<<EOF
+services: atlas: {
+  address: "${DB_HOST}"
+  default: true
+  secrets: ["admin", "user"]
+  ports: "27017"
+  data: {
+    proto: "${DB_PROTO}"
+    dbName: "${DB_NAME}"
+  }
+}
+secrets: state: {
+  data: {
+    created_cluster: "${created_cluster}"
+    created_db_user: "${created_db_user}"
+    created_db_root_user: "${created_db_root_user}"
+  }
+}
+EOF
