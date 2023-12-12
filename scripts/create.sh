@@ -1,7 +1,11 @@
 #!/bin/sh
-# set -eo pipefail
+# set -eox pipefail
 
 echo "[create.sh]"
+
+# Couple of variables to make local testing simpler
+termination_log="/dev/termination-log"
+acorn_output="/run/secrets/output"
 
 # Make sure this script only repply on an Acorn creation event
 if [ "${ACORN_EVENT}" = "delete" ]; then
@@ -20,7 +24,7 @@ render_service() {
   DB_HOST=$(echo $DB_ADDRESS | cut -d'/' -f3)
   echo "DB_ADDRESS: [${DB_ADDRESS}] / DB_PROTO:[${DB_PROTO}] / DB_HOST:[${DB_HOST}]"
 
-  cat > /run/secrets/output<<EOF
+  cat > ${acorn_output}<<EOF
   services: atlas: {
     address: "${DB_HOST}"
     default: true
@@ -63,7 +67,7 @@ db_user_create() {
 db_user_exists() {
   res=$(atlas dbusers describe $1 2>&1 >/dev/null)
   if [ $? -ne 0 ]; then
-    echo ${res} > /dev/termination_log
+    echo ${res} | tee ${termination_log}
     return 1
   fi
 }
@@ -91,7 +95,7 @@ if [ $? -ne 0 ]; then
   # Make sure the cluster was created correctly
   if [ $? -ne 0 ]; then
     echo $result
-    echo $result > /dev/termination_log
+    echo $result | tee ${termination_log}
     exit 1
   fi
   
@@ -121,7 +125,7 @@ else
              ${disk_arg} 2>&1)
     if [ $? -ne 0 ]; then
       echo $result
-      echo $result > /dev/termination_log
+      echo $result | tee ${termination_log}
       exit 1
     fi
   fi
