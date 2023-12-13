@@ -1,6 +1,6 @@
 #!/bin/sh
 # set -eox pipefail
-set -x
+
 echo "[create.sh]"
 
 . $(dirname $0)/lib_func.sh
