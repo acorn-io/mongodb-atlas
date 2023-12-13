@@ -4,9 +4,22 @@ This folder defines an Acorn service which allows to create a Mongo Atlas cluste
 
 In this very early version each cluster created by the service has the following characteristics, they are currently hardcoded but will soon become service's arguments:
 
+Default values are:
+
 - cloud provider: AWS
 - region: US_EAST_1
 - tier: M0
+- dbName: mydb
+- dbVersion: 6.0
+- diskSizeGB: 10 // For M10+ clusters.
+
+If you set any of the following arguments, the service Acorn will not manage the resource.
+
+- clusterName
+- dbUser
+- dbAdminUser
+
+See below for more details setting these values.
 
 Notes:
 
@@ -75,10 +88,13 @@ An application running in the Sandbox will automatically shut down after 2 hours
 
 ## Consume an existing secret
 
-This Acorn will need credentials to interact with the Atlas API. These credentials are stored in a secret named *atlas-creds*. This secret needs to be created ahead of time by the user.
+This Acorn will need credentials to interact with the Atlas API. These credentials are stored in a secret named *atlas-creds*. The secret can be created ahead of time or you can run:
 
-You will need to launch the acorn with the following argument set: `--useExternalCreds`
-This will tell Acorn to use the external secret instead of prompting for one.
+```shell
+acorn login [APP_NAME]
+```
+
+This will prompt the user for the credentials needed to create the database on Atlas.
 
 Note: this example uses an organization named *Techwhale* containing the project *webhooks*
 
@@ -112,6 +128,12 @@ acorn secrets create \
 ## Updating/Upgrading
 
 When changing Tiers, you must follow the MongoDB atlas upgrade path. You can only upgrade an M0, M2, or M5 Cluster to an M10+ Cluster.
+
+## launching with clusterName, dbUser, dbAdminUser values
+
+If you set the clusterName, the service Acorn will not manage it for you. It must already exist in Atlas. The reason for this, is if you create a cluster from a backup or some other source, Acorn will not take over the management.
+
+If you set either of the users, you must pre-create the users in Atlas, create the user and/or admin secret in Acorn, and link them when launching the mongodb-atlas service Acorn.
 
 ## Status
 

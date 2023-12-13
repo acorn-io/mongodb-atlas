@@ -14,8 +14,8 @@ args: {
 	// Cluster size (only M0 is free). See https://dochub.mongodb.org/core/cluster-tier-atlas for available tiers
 	tier: "M0"
 
-	// Cluster name
-	clusterName: "mytestcluster"
+	// If passed this cluster name must exist. Defaults to ACORN_EXTERNAL_ID
+	clusterName: ""
 
 	// Database version
 	dbVersion: "6.0"
@@ -23,8 +23,11 @@ args: {
 	// Default database
 	dbName: "mydb"
 
-	// Default user
-	dbUser: "mytestuser"
+	// If passed the user must exist in Atlas already. A user will be generated user and created by default.
+	dbUser: ""
+
+	// If passed the user must exist in Atlas already. A user will be generated user and created by default.
+	dbAdminUser: ""
 
 	// Disk size in GB. Ignored for M0, M2, and M5 clusters. Defaults to 10GB for M10+ clusters
 	diskSizeGB: 10
@@ -45,37 +48,38 @@ jobs: "create-cluster": {
 		PROVIDER:                      args.provider
 		REGION:                        args.region
 		TIER:                          args.tier
-		CLUSTER_NAME:                  args.clusterName
-		DB_VERSION:                    args.dbVersion
-		DB_USER:                       "secret://user/username"
-		DB_PASS:                       "secret://user/password"
-		DB_NAME:                       args.dbName
-		DB_ROOT_USER:                  "secret://admin/username"
-		DB_ROOT_PASS:                  "secret://admin/password"
+		// Atlas has uniqueness requirements for the first 23 chars in the cluster name, cant use externalID
+		CLUSTER_NAME: if args.clusterName != "" {args.clusterName} else {"@{acorn.name}-@{acorn.project}-@{acorn.account}"}
+		DB_VERSION:   args.dbVersion
+		DB_USER:      if args.dbUser != "" {args.dbUser} else {"@{acorn.name}-@{acorn.project}-user"}
+		DB_PASS:      "secret://internal-user/token"
+		DB_NAME:      args.dbName
+		DB_ROOT_USER: if args.dbAdminUser != "" {args.dbAdminUser} else {"@{acorn.name}-@{acorn.project}-root"}
+		DB_ROOT_PASS: "secret://internal-admin/token"
 		if (args.tier != "M0" && args.tier != "M2" && args.tier != "M5") {
 			DISK_SIZE_GB: "\(args.diskSizeGB)"
 		}
+		GENERATED_DB_USER:      "@{acorn.name}-@{acorn.project}-user"
+		GENERATED_ROOT_USER:    "@{acorn.name}-@{acorn.project}-root"
+		GENERATED_CLUSTER_NAME: "@{acorn.name}-@{acorn.project}-@{acorn.account}"
 	}
 	events: ["create", "update"]
 }
 
 jobs: "delete-cluster": {
-	build: {
-		context: "."
-		buildArgs: {
-			action: "delete"
-		}
-	}
+	build: context:          "."
+	dirs: "/acorn/scripts/": "./scripts/"
 	env: {
 		ACORN_EXTERNAL_ID:             "@{acorn.externalID}"
 		MONGODB_ATLAS_PUBLIC_API_KEY:  "secret://atlas-creds/public_key"
 		MONGODB_ATLAS_PRIVATE_API_KEY: "secret://atlas-creds/private_key"
 		MONGODB_ATLAS_PROJECT_ID:      "secret://atlas-creds/project_id"
-		CREATED_CLUSTER:               "secret://state/created_cluster"
-		CREATED_DB_ROOT_USER:          "secret://state/created_db_root_user"
-		CREATED_DB_USER:               "secret://state/created_db_user"
+		GENERATED_DB_USER:             "@{acorn.name}-@{acorn.project}-user"
+		GENERATED_ROOT_USER:           "@{acorn.name}-@{acorn.project}-root"
+		GENERATED_CLUSTER_NAME:        "@{acorn.name}-@{acorn.project}-@{acorn.account}"
 	}
 	events: ["delete"]
+	entrypoint: "/acorn/scripts/delete.sh"
 }
 
 secrets: "atlas-creds": {
@@ -85,42 +89,37 @@ secrets: "atlas-creds": {
 		promptOrder: ["public_key", "private_key", "project_id"]
 	}
 	data: {
-		public_key:  "MONGODB_ATLAS_PUBLIC_API_KEY"
-		private_key: "MONGODB_ATLAS_PRIVATE_API_KEY"
-		project_id:  "MONGODB_ATLAS_PROJECT_ID"
+		public_key:  ""
+		private_key: ""
+		project_id:  ""
 	}
 }
 
-secrets: "state": {
+secrets: admin: {
 	type: "generated"
 	params: job: "create-cluster"
 }
 
-secrets: admin: {
-	name: "credentials of the admin user"
-	type: "basic"
+secrets: "internal-admin": {
+	name: "password for admin user"
+	type: "token"
 	params: {
-		passwordLength:     10
-		passwordCharacters: "A-Za-z0-9"
-	}
-	data: {
-		username: "root"
-		password: ""
+		length:     24
+		characters: "A-Za-z0-9"
 	}
 }
 
 secrets: user: {
-	name: "user credentials"
-	type: "basic"
+	type: "generated"
+	params: job: "create-cluster"
+}
+
+secrets: "internal-user": {
+	name: "user password"
+	type: "token"
 	params: {
-		usernameLength:     7
-		usernameCharacters: "a-z"
-		passwordLength:     10
-		passwordCharacters: "A-Za-z0-9"
-	}
-	data: {
-		username: std.ifelse(args.dbUser != "", args.dbUser, "")
-		password: ""
+		length:     24
+		characters: "A-Za-z0-9"
 	}
 }
 
@@ -137,7 +136,7 @@ localData: info: """
 		  DB_HOST:  "@{@{service.}db.address}"
 		  DB_PORT:  "@{@{service.}db.port.27017}"
 		  DB_NAME:  "@{@{service.}db.data.dbName}"
-      DB_PROTO: "@{@{service.}db.data.proto}"
+          DB_PROTO: "@{@{service.}db.data.proto}"
 		  DB_USER:  "@{@{service.}db.secrets.user.username}"
 		  DB_PASS:  "@{@{service.}db.secrets.user.password}"
 		}
