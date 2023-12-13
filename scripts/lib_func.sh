@@ -60,7 +60,7 @@ check_cluster_exists() {
       return 1
     fi
 
-    if [ $found -ne 0 ] && [ "${cluster_name}" != "${generated_cluster_name}"]; then
+    if [ $found -ne 0 ] && [ "${cluster_name}" != "${generated_cluster_name}" ]; then
       # "The cluster does not exist, but should."
       return 4
     fi
