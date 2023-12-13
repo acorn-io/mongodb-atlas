@@ -41,27 +41,50 @@ sanitize_name() {
   echo "${1//./-}"
 }
 
+# Response codes:
+# 0: Update the cluster, it exists and belongs to this Acorn
+# 1: This Acorn is supposed to manage, create the cluster
+# 2: This Acorn is not supposed to manage, do nothing to the cluster
+# 3: This Acorn is not supposed to manage because it belongs to another Acorn, this is an error exit
+# 4: Cluster name was passed, but it doesn't exist, exit user needs to create it
 check_cluster_exists() {
     local generated_cluster_name=$(sanitize_name "${GENERATED_CLUSTER_NAME}")
     local cluster_name=$(sanitize_name "${1}")
-    # Check if the cluster should be managed by Acorn
-    atlas cluster describe $cluster_name > /dev/null 2>&1
-    if [ $? -ne 0 ] && [ "${cluster_name}" = "${generated_cluster_name}" ]; then
+    # Check if the cluster exists in Atlas
+    cluster_object=$(atlas cluster describe -o json $cluster_name)
+    found=$?
+    
+    # If it doesn't exist and the cluster and generated names are the same return 1
+    # to create it
+    if [ $found -ne 0 ] && [ "${cluster_name}" = "${generated_cluster_name}" ]; then
       return 1
     fi
 
-    if [ "${cluster_name}" != "${generated_cluster_name}" ]; then
-      return 2
+    if [ $found -ne 0 ] && [ "${cluster_name}" != "${generated_cluster_name}"]; then
+      # "The cluster does not exist, but should."
+      return 4
     fi
 
     # Check if the "acorn_external_id" tag exists and has the correct value
-    if atlas cluster describe $cluster_name -o json | jq '.tags | map(select(.key == "acorn_external_id" and .value == env.ACORN_EXTERNAL_ID)) | any'; then
+    # if it does return 0 
+    # If it does not return 3
+    # If found but not using acorn_external_id return 2
+    if [ "$(echo "${cluster_object}" | jq --arg generated_cluster_name "${generated_cluster_name}" \
+        '(.name == $generated_cluster_name) and (.tags | map(select(.key == "acorn_external_id" and .value == env.ACORN_EXTERNAL_ID)) | any)')" = "true" ]; then
         # "The 'acorn_external_id' tag exists and has the correct value."
         return 0
-    else
+    elif [ "$(echo "${cluster_object}" | jq --arg generated_cluster_name "${generated_cluster_name}" \
+        '(.name == $generated_cluster_name) and (.tags | map(select(.key == "acorn_external_id" and .value != env.ACORN_EXTERNAL_ID)) | any)')" = "true" ]; then
         # "The 'acorn_external_id' tag does not exist or has an incorrect value."
         return 3
+    elif [ "$(echo "${cluster_object}" | jq '.tags | map(select(.key == "acorn_external_id" and .value != env.ACORN_EXTERNAL_ID)) | any')" = "true" ]; then
+        # "The 'acorn_external_id' tag does not exist or has an incorrect value."
+        return 3
+    else
+        # No management is going to be done, but the cluster will be used assuming API access.
+        return 2
     fi
+  
 }
 
 create_cluster() {
