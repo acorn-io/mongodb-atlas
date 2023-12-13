@@ -14,7 +14,7 @@ args: {
 	// Cluster size (only M0 is free). See https://dochub.mongodb.org/core/cluster-tier-atlas for available tiers
 	tier: "M0"
 
-	// If passed this cluster name must exist. Defaults to ACORN_EXTERNAL_ID
+	// If passed this cluster name must exist in Atlas. Defaults to generated name
 	clusterName: ""
 
 	// Database version

@@ -1,6 +1,6 @@
 #!/bin/sh
 # set -eox pipefail
-
+set -x
 echo "[create.sh]"
 
 . $(dirname $0)/lib_func.sh
@@ -30,14 +30,18 @@ case ${cluster_exists_response} in
     update_cluster
     ;;
   1)
-    echo "cluster ${CLUSTER_NAME} exists"
+    echo "cluster ${CLUSTER_NAME} needs to be created"
     create_cluster
     ;;
   2)
-    echo "Cluster ${CLUSTER_NAME} exists and not intened to be managed by this Acorn"
+    echo "Cluster ${CLUSTER_NAME} exists, will use it"
     ;;
   3)
     echo "cluster ${CLUSTER_NAME} exists, but provisioned by another Acorn"| tee ${TERMINATION_LOG}
+    exit 1
+    ;;
+  4)
+    echo "cluster ${CLUSTER_NAME} doesn't exist in atlas, need to create cluster in Atlas first" | tee ${TERMINATION_LOG}
     exit 1
     ;;
   *)
